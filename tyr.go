@@ -4,6 +4,6 @@ import (
 	"gitlab.com/vikingmakt/tyr/rmq"
 )
 
-type Tyr sturct {
-	
+type Tyr struct {
+	RMQ *rmq.RMQ
 }
