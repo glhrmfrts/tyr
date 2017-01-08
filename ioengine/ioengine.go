@@ -9,12 +9,12 @@ type IOEngine struct {
 	on bool
 }
 
-func (self IOEngine) loop() {
+func (self IOEngine) loop() bool {
 	if self.on {
 		event <- self.queue
 		go event.callback(event.payload)		
 		go self.IOEngine.loop()
-		
+
 		return true
 	}
 	
