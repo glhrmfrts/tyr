@@ -1,7 +1,7 @@
 package ioengine
 
 type event struct {
-	callback func
+	callback func()
 	payload interface{}
 }
 
