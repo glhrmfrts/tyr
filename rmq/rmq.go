@@ -1,9 +1,5 @@
 package rmq
 
-/* import (
-	"github.com/streadway/amqp"
-) */
-
 type RMQ struct {
 	
 }

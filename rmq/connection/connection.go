@@ -1,5 +1,9 @@
 package connection
 
-type Connection struct {
+import (
+	"github.com/streadway/amqp"
+)
+
+type Config struct {
 	url nil
 }
