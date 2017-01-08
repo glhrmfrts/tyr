@@ -4,6 +4,10 @@ type IOEngine struct {
 	on bool
 }
 
+func (self *IOEngine) Stop() {
+	self.on = false
+}
+
 func (self *IOEngine) Start() {
 	self.on = true
 }
