@@ -7,6 +7,7 @@ type event struct {
 
 type IOEngine struct {
 	on bool
+	channel chan
 }
 
 func (self IOEngine) loop() bool {
