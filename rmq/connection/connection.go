@@ -5,5 +5,5 @@ import (
 )
 
 type Config struct {
-	url nil
+	url string
 }
