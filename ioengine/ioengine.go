@@ -6,8 +6,8 @@ type event struct {
 }
 
 type IOEngine struct {
-	queue chan event
 	on bool
+	queue chan event
 }
 
 func (self *IOEngine) AddCallback(callback func(), payload interface{}) {
