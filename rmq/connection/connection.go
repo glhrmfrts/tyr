@@ -1,9 +1,13 @@
 package connection
-
+/*
 import (
 	"github.com/streadway/amqp"
 )
-
+*/
 type Config struct {
-	url string
+	URL string
+}
+
+func Connection(config *Config) {
+	println(config.URL)
 }
