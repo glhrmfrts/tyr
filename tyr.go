@@ -6,7 +6,7 @@ import (
 )
 
 type Tyr struct {
-	IOEngine *ioengine.IOEngine
+	IOEngine ioengine.IOEngine
 	RMQ *rmq.RMQ
 }
 

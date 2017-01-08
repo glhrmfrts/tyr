@@ -8,6 +8,6 @@ func (self *IOEngine) Start() {
 	self.on = true
 }
 
-func (self *IOEngine) Status() bool {
+func (self IOEngine) Status() bool {
 	return self.on
 }
