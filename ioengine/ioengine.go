@@ -7,19 +7,23 @@ type event struct {
 
 type IOEngine struct {
 	on bool
-	channel chan
+	channel chan event
 }
 
-func (self IOEngine) loop() bool {
-	if self.on {
-		event <- self.queue
-		go event.callback(event.payload)		
-		go self.IOEngine.loop()
-
-		return true
+func (self *IOEngine) AddCallback(callback func(), payload interface{}) {
+	self.queue <- event{
+		callback: callback,
+		payload: payload,
 	}
-	
-	return false
+}
+
+func (self *IOEngine) loop() bool {
+	for self.on {
+		event <- self.queue
+		go event.callback(event.payload)
+	}
+
+	return true
 }
 
 func (self *IOEngine) Stop() {
