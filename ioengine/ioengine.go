@@ -1,11 +1,24 @@
 package ioengine
 
+type event struct {
+	callback func
+	payload interface{}
+}
+
 type IOEngine struct {
 	on bool
 }
 
 func (self IOEngine) loop() {
-	if self.on 
+	if self.on {
+		event <- self.queue
+		go event.callback(event.payload)		
+		go self.IOEngine.loop()
+		
+		return true
+	}
+	
+	return false
 }
 
 func (self *IOEngine) Stop() {
