@@ -19,7 +19,7 @@ func (self *IOEngine) AddCallback(callback func(), payload interface{}) {
 
 func (self *IOEngine) loop() bool {
 	for self.on {
-		event <- self.queue
+		event := <- self.queue
 		go event.callback(event.payload)
 	}
 
