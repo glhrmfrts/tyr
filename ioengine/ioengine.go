@@ -31,10 +31,6 @@ func (self *IOEngine) AddCallback(callback func(interface{}), payload interface{
 	}
 }
 
-func (self *IOEngine) Stop() {
-	self.on = false
-}
-
 func (self *IOEngine) Start() {
 	self.queue = make(chan event)
 	self.on = true
@@ -47,6 +43,10 @@ func (self *IOEngine) Start() {
 
 func (self *IOEngine) Status() bool {
 	return self.on
+}
+
+func (self *IOEngine) Stop() {
+	self.on = false
 }
 
 func (self *IOEngine) loop() {
