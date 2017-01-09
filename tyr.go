@@ -7,10 +7,10 @@ import (
 
 type Tyr struct {
 	IOEngine ioengine.IOEngine
-	RMQ *rmq.RMQ
+	RMQ rmq.RMQ
 }
 
 func (self *Tyr) Run() {
 	self.IOEngine.Start()
-	self.IOEngine.WaitGroup.Wait()
+	//self.IOEngine.WaitGroup.Wait()
 }

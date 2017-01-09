@@ -1,7 +1,7 @@
 package ioengine
 
 import (
-	"sync"
+	"time"
 )
 
 type event struct {
@@ -10,15 +10,12 @@ type event struct {
 }
 
 type IOEngine struct {
-	WaitGroup sync.WaitGroup
 	on bool
 	pending []event
 	queue chan event
 }
 
 func (self *IOEngine) AddCallback(callback func(interface{}), payload interface{}) {
-	self.WaitGroup.Add(1)
-
 	event := event{
 		callback: callback,
 		payload: payload,
@@ -31,13 +28,22 @@ func (self *IOEngine) AddCallback(callback func(interface{}), payload interface{
 	}
 }
 
+func (self *IOEngine) Future(callback func(Result)) *Future {
+	return NewFuture(callback)
+}
+
 func (self *IOEngine) Start() {
 	self.queue = make(chan event)
 	self.on = true
 	go self.loop()
 
-	for _, event := range self.pending {
-		self.queue <- event
+	for len(self.pending) > 0 {
+		self.queue <- self.pending[0]
+		self.pending = self.pending[1:]
+	}
+
+	for self.on {
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -50,11 +56,9 @@ func (self *IOEngine) Stop() {
 }
 
 func (self *IOEngine) loop() {
-	for self.on {
+	if self.on {
 		event := <-self.queue
-		go func() {
-			event.callback(event.payload)
-			self.WaitGroup.Done()
-		}()
+		go event.callback(event.payload)
+		go self.loop()
 	}
 }
