@@ -10,3 +10,7 @@ type Tyr struct {
 	RMQ *rmq.RMQ
 }
 
+func (self *Tyr) Run() {
+	self.IOEngine.Start()
+	self.IOEngine.WaitGroup.Wait()
+}
