@@ -21,17 +21,18 @@ func NewFuture(callback func(Result)) *Future {
 	return f
 }
 
-func (f *Future) Set(value interface{}, error error) {
+func (f *Future) Set(value interface{}, error error) bool {
 	f.channel <- Result{
 		Result: value,
 		Error: error,
 	}
+	return true
 }
 
-func (f *Future) SetError(error error) {
-	f.Set(nil, error)
+func (f *Future) SetError(error error) bool {
+	return f.Set(nil, error)
 }
 
-func (f *Future) SetResult(value interface{}) {
-	f.Set(value, nil)
+func (f *Future) SetResult(value interface{}) bool {
+	return f.Set(value, nil)
 }

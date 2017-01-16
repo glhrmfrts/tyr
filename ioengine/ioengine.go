@@ -5,8 +5,7 @@ import (
 )
 
 type event struct {
-	callback func(interface{})
-	payload interface{}
+	callback func()
 }
 
 type IOEngine struct {
@@ -15,21 +14,14 @@ type IOEngine struct {
 	queue chan event
 }
 
-func (self *IOEngine) AddCallback(callback func(interface{}), payload interface{}) {
-	event := event{
-		callback: callback,
-		payload: payload,
-	}
+func (self *IOEngine) AddCallback(callback func()) {
+	e := event{callback}
 
 	if self.on {
-		self.queue <- event
+		self.queue <- e
 	} else {
 		self.pending = append(self.pending, event)
 	}
-}
-
-func (self *IOEngine) Future(callback func(Result)) *Future {
-	return NewFuture(callback)
 }
 
 func (self *IOEngine) Start() {
@@ -58,7 +50,7 @@ func (self *IOEngine) Stop() {
 func (self *IOEngine) loop() {
 	if self.on {
 		event := <-self.queue
-		go event.callback(event.payload)
+		go event.callback()
 		go self.loop()
 	}
 }

@@ -5,12 +5,18 @@ import (
 	"gitlab.com/vikingmakt/tyr/rmq"
 )
 
+type Main interface {
+	After(v interface{})
+	Before()
+}
+
 type Tyr struct {
 	IOEngine ioengine.IOEngine
 	RMQ rmq.RMQ
 }
 
-func (self *Tyr) Run() {
+func (self *Tyr) Run(m Main) {
+	m.Before()
+	self.IOEngine.AddCallback(m.After, nil)
 	self.IOEngine.Start()
-	//self.IOEngine.WaitGroup.Wait()
 }
