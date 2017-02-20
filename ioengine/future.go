@@ -9,6 +9,10 @@ type Result struct {
 	Error error
 }
 
+func F(callback func(Result)) *Future {
+	return NewFuture(callback)
+}
+
 func NewFuture(callback func(Result)) *Future {
 	f := &Future{
 		channel: make(chan Result),

@@ -1,6 +1,7 @@
 package settings
 
 type Settings struct {
+	Amqp     string
 	Exchange Exchange
 	Services map[string]Service
 }

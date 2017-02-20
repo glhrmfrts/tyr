@@ -2,6 +2,7 @@ package rmq
 
 import (
 	"fmt"
+	"log"
 	"github.com/streadway/amqp"
 	"gitlab.com/vikingmakt/tyr/ioengine"
 	"gitlab.com/vikingmakt/tyr/settings"
@@ -96,14 +97,16 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings, future *io
 		}
 
 		err = channel.channel.QueueBind(
-			settings.Exchange.Topic,
 			s.Queue,
 			s.RoutingKey,
+			settings.Exchange.Topic,
 			false,      // noWait
 			nil,        // arguments
 		)
 		if err != nil {
 			future.SetError(fmt.Errorf("Queue Bind: %s", err))
+		} else {
+			log.Printf("RK %s -> Queue %s", s.RoutingKey, s.Queue)
 		}
 	}
 
