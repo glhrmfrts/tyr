@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/streadway/amqp"
 	"gitlab.com/vikingmakt/tyr/ioengine"
+	"gitlab.com/vikingmakt/tyr/settings"
 )
 
 type RMQ struct {
@@ -11,7 +12,7 @@ type RMQ struct {
 	connection *amqp.Connection
 }
 
-func (r *RMQ) Announce(settings *tyr.Settings, future *ioengine.Future) {
+func (r *RMQ) Announce(settings *settings.Settings, future *ioengine.Future) {
 	futureAnnounceChannel := ioengine.NewFuture(func(res ioengine.Result) {
 		r.announce(res.Result.(*Channel), settings, future)
 	})
@@ -27,13 +28,16 @@ func (r *RMQ) Channel(name string, future *ioengine.Future) {
 			future.SetError(fmt.Errorf("No connection"))
 		}
 
-		channel, err := r.connection.Channel()
-		if err != nil {
-			return future.SetError(err)
+		if _, ok := r.channels[name]; !ok {
+			channel, err := r.connection.Channel()
+			if err != nil {
+				return future.SetError(err)
+			}
+
+			r.channels[name] = &Channel{channel}
 		}
 
-		r.channels[name] = &Channel{channel}
-		return future.SetResult(channel)
+		return future.SetResult(r.channels[name])
 	}()
 }
 
@@ -49,53 +53,65 @@ func (r *RMQ) Connect(url string, future *ioengine.Future) {
 	}()
 }
 
-func (r *RMQ) announce(channel *Channel, settings *tyr.Settings, future *ioengine.Future) {
+func (r *RMQ) announce(channel *Channel, settings *settings.Settings, future *ioengine.Future) {
 	var err error
 
-	err = channel.ExchangeDeclare(
+	err = channel.channel.ExchangeDeclare(
 		settings.Exchange.Topic,
 		"topic",
-		true,
-		nil,
+		true,         // durable
+		false,        // delete when complete
+		false,        // internal
+		false,        // noWait
+		nil,          // arguments
 	)
 	if err != nil {
 		future.SetError(fmt.Errorf("Exchange Declare: %s", err))
 	}
 
-	err = channel.ExchangeDeclare(
+	err = channel.channel.ExchangeDeclare(
 		settings.Exchange.Headers,
 		"headers",
-		true,
-		nil,
+		true,         // durable
+		false,        // delete when complete
+		false,        // internal
+		false,        // noWait
+		nil,          // arguments
 	)
 	if err != nil {
 		future.SetError(fmt.Errorf("Exchange Declare: %s", err))
 	}
 
 	for _, s := range settings.Services {
-		err = channel.QueueDeclare(
+		_, err = channel.channel.QueueDeclare(
 			s.Queue,
-			true,
-			false,
-			nil,
+			true,      // durable
+			false,     // delete when unused
+			false,     // exclusive
+			false,     // noWait
+			nil,       // arguments
 		)
 		if err != nil {
 			future.SetError(fmt.Errorf("Queue Declare: %s", err))
 		}
 
-		err = channel.QueueBind(
+		err = channel.channel.QueueBind(
 			settings.Exchange.Topic,
 			s.Queue,
 			s.RoutingKey,
+			false,      // noWait
+			nil,        // arguments
 		)
 		if err != nil {
 			future.SetError(fmt.Errorf("Queue Bind: %s", err))
 		}
 	}
+
+	future.SetResult(true)
 }
 
 func (r *RMQ) assertChannels() {
 	if r.channels == nil {
-		r.channels = make(map[string]*amqp.Channel)
+		r.channels = make(map[string]*Channel)
 	}
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type Main interface {
-	After(v interface{})
+	After()
 	Before()
 }
 
@@ -17,6 +17,6 @@ type Tyr struct {
 
 func (self *Tyr) Run(m Main) {
 	m.Before()
-	self.IOEngine.AddCallback(m.After, nil)
+	self.IOEngine.AddCallback(m.After)
 	self.IOEngine.Start()
 }

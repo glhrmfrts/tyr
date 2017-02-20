@@ -15,12 +15,12 @@ type IOEngine struct {
 }
 
 func (self *IOEngine) AddCallback(callback func()) {
-	e := event{callback}
+	evt := event{callback}
 
 	if self.on {
-		self.queue <- e
+		self.queue <- evt
 	} else {
-		self.pending = append(self.pending, event)
+		self.pending = append(self.pending, evt)
 	}
 }
 
