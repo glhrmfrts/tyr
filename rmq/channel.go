@@ -11,7 +11,7 @@ type Channel struct {
 
 type ConsumerCallback func(msg *Message)
 
-func (c *Channel) BasicConsume(queue string, ctag string, consumer ConsumerCallback) error {
+func (c *Channel) BasicConsume(queue string, ctag string, callback ConsumerCallback) error {
 	deliveries, err := c.channel.Consume(
 		queue, // name
 		ctag,      // consumerTag,
@@ -27,7 +27,7 @@ func (c *Channel) BasicConsume(queue string, ctag string, consumer ConsumerCallb
 
 	go func() {
 		for d := range deliveries {
-			consumer(newMessage(&d))
+			go callback(newMessage(&d))
 		}
 	}()
 

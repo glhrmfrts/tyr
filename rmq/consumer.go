@@ -1,6 +1,7 @@
 package rmq
 
 import (
+	"github.com/satori/go.uuid"
 )
 
 type Consumer struct {
@@ -8,10 +9,8 @@ type Consumer struct {
 }
 
 func (c *Consumer) Tag() string {
-	// TODO: generate tag from uuid
-
 	if c.tag == "" {
-		c.tag = "simple-consumer"
+		c.tag = uuid.NewV4().String()
 	}
 	return c.tag
 }
