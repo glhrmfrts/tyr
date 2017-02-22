@@ -27,7 +27,7 @@ func (c *Channel) BasicConsume(queue string, ctag string, callback ConsumerCallb
 
 	go func() {
 		for d := range deliveries {
-			go callback(newMessage(&d))
+			callback(newMessage(&d))
 		}
 	}()
 
