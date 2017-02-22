@@ -11,6 +11,19 @@ type Channel struct {
 
 type ConsumerCallback func(msg *Message)
 
+func newChannel(r *RMQ, prefetchCount int) (*Channel, error) {
+	var err error
+
+	c := &Channel{}
+	c.channel, err = r.connection.Channel()
+	if err != nil {
+		return nil, err
+	}
+
+	c.channel.Qos(prefetchCount, 0, false)
+	return c, nil
+}
+
 func (c *Channel) BasicConsume(queue string, ctag string, callback ConsumerCallback) error {
 	deliveries, err := c.channel.Consume(
 		queue, // name

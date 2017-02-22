@@ -18,10 +18,10 @@ func (r *RMQ) Announce(settings *settings.Settings, future *ioengine.Future) {
 		r.announce(res.Result.(*Channel), settings, future)
 	})
 
-	r.Channel("announce", futureAnnounceChannel)
+	r.Channel("announce", 0, futureAnnounceChannel)
 }
 
-func (r *RMQ) Channel(name string, future *ioengine.Future) {
+func (r *RMQ) Channel(name string, prefetchCount int, future *ioengine.Future) {
 	go func() bool {
 		r.assertChannels()
 
@@ -30,12 +30,12 @@ func (r *RMQ) Channel(name string, future *ioengine.Future) {
 		}
 
 		if _, ok := r.channels[name]; !ok {
-			channel, err := r.connection.Channel()
+			channel, err := newChannel(r, prefetchCount)
 			if err != nil {
 				return future.SetError(err)
 			}
 
-			r.channels[name] = &Channel{channel}
+			r.channels[name] = channel
 		}
 
 		return future.SetResult(r.channels[name])
