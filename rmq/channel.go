@@ -9,8 +9,6 @@ type Channel struct {
 	channel *amqp.Channel
 }
 
-type ConsumerCallback func(msg *Message)
-
 func newChannel(r *RMQ, prefetchCount int) (*Channel, error) {
 	var err error
 
