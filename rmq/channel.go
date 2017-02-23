@@ -3,6 +3,7 @@ package rmq
 import (
 	"fmt"
 	"github.com/streadway/amqp"
+	//"log"
 )
 
 type Channel struct {
@@ -38,7 +39,8 @@ func (c *Channel) BasicConsume(queue string, ctag string, callback ConsumerCallb
 
 	go func() {
 		for d := range deliveries {
-			callback(newMessage(&d))
+			msg := newMessage(&d)
+			go callback(msg)
 		}
 	}()
 

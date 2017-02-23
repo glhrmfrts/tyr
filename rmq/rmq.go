@@ -35,6 +35,15 @@ func (r *RMQ) Channel(name string, prefetchCount int, future *ioengine.Future) {
 				return future.SetError(err)
 			}
 
+			ch := make(chan *amqp.Error)
+			channel.channel.NotifyClose(ch)
+
+			go func() {
+				for err := range ch {
+					fmt.Println(err)
+				}
+			}()
+
 			r.channels[name] = channel
 		}
 
@@ -48,6 +57,15 @@ func (r *RMQ) Connect(url string, future *ioengine.Future) {
 		if err != nil {
 			return future.SetError(err)
 		}
+
+		ch := make(chan *amqp.Error)
+		connection.NotifyClose(ch)
+
+		go func() {
+			for err := range ch {
+				fmt.Println(err)
+			}
+		}()
 
 		r.connection = connection
 		return future.SetResult(connection)

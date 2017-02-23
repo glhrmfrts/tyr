@@ -5,10 +5,21 @@ import (
 )
 
 type Message struct {
-	delivery *amqp.Delivery
+	delivery    amqp.Delivery
+	Body        []byte
+	Headers     map[string]interface{}
+}
+
+func newMessage(d *amqp.Delivery) *Message {
+	return &Message{
+		delivery: *d,
+		Body: d.Body,
+		Headers: map[string]interface{}(d.Headers),
+	}
 }
 
 func (m *Message) ack(success, multiple bool) error {
+	//m.delivery.DeliveryTag = m.DeliveryTag
 	if success {
 		return m.delivery.Ack(multiple)
 	} else {
@@ -24,20 +35,6 @@ func (m *Message) AckMultiple(success bool) error {
 	return m.ack(success, true)
 }
 
-func (m *Message) Body() []byte {
-	return m.delivery.Body
-}
-
-func (m *Message) Headers() map[string]interface{} {
-	return map[string]interface{}(m.delivery.Headers)
-}
-
 func (m *Message) Reject(requeue bool) error {
 	return m.delivery.Reject(requeue)
-}
-
-func newMessage(d *amqp.Delivery) *Message {
-	return &Message{
-		delivery: d,
-	}
 }
