@@ -1,22 +1,18 @@
 package tyr
 
 import (
-	"gitlab.com/vikingmakt/tyr/ioengine"
 	"gitlab.com/vikingmakt/tyr/rmq"
+  "time"
 )
 
 type Main interface {
-	After()
-	Before()
+	Start()
 }
 
-type Tyr struct {
-	IOEngine ioengine.IOEngine
-	RMQ rmq.RMQ
-}
+func Run(m Main) {
+	m.Start()
 
-func (self *Tyr) Run(m Main) {
-	m.Before()
-	self.IOEngine.AddCallback(m.After)
-	self.IOEngine.Start()
+  for {
+    time.Sleep(100 * time.Millisecond)
+  }
 }

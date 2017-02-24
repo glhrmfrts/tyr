@@ -13,66 +13,62 @@ type RMQ struct {
 	connection *amqp.Connection
 }
 
-func (r *RMQ) Announce(settings *settings.Settings, future *ioengine.Future) {
-	futureAnnounceChannel := ioengine.NewFuture(func(res ioengine.Result) {
-		r.announce(res.Result.(*Channel), settings, future)
-	})
+func Connect(url string, settings *settings.Settings) (*RMQ, error) {
+	var r RMQ
 
-	r.Channel("announce", 0, futureAnnounceChannel)
-}
+	connection, err := amqp.Dial(url)
+	if err != nil {
+		return nil, err
+	}
 
-func (r *RMQ) Channel(name string, prefetchCount int, future *ioengine.Future) {
-	go func() bool {
-		r.assertChannels()
+	ch := make(chan *amqp.Error)
+	connection.NotifyClose(ch)
 
-		if r.connection == nil {
-			future.SetError(fmt.Errorf("No connection"))
+	go func() {
+		for err := range ch {
+			log.Println(err)
 		}
-
-		if _, ok := r.channels[name]; !ok {
-			channel, err := newChannel(r, prefetchCount)
-			if err != nil {
-				return future.SetError(err)
-			}
-
-			ch := make(chan *amqp.Error)
-			channel.channel.NotifyClose(ch)
-
-			go func() {
-				for err := range ch {
-					fmt.Println(err)
-				}
-			}()
-
-			r.channels[name] = channel
-		}
-
-		return future.SetResult(r.channels[name])
 	}()
+
+	r.connection = connection
+
+	err = r.announce(r.Channel("announce", 0), settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return &r, nil
 }
 
-func (r *RMQ) Connect(url string, future *ioengine.Future) {
-	go func() bool {
-		connection, err := amqp.Dial(url)
+func (r *RMQ) Channel(name string, prefetchCount int) (*Channel, error) {
+	r.assertChannels()
+
+	if r.connection == nil {
+		return nil, fmt.Errorf("No connection")
+	}
+
+	if _, ok := r.channels[name]; !ok {
+		channel, err := newChannel(r, prefetchCount)
 		if err != nil {
-			return future.SetError(err)
+			return nil, err
 		}
 
 		ch := make(chan *amqp.Error)
-		connection.NotifyClose(ch)
+		channel.channel.NotifyClose(ch)
 
 		go func() {
 			for err := range ch {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		}()
 
-		r.connection = connection
-		return future.SetResult(connection)
-	}()
+		r.channels[name] = channel
+	}
+
+	return r.channels[name], nil
 }
 
-func (r *RMQ) announce(channel *Channel, settings *settings.Settings, future *ioengine.Future) {
+func (r *RMQ) announce(channel *Channel, settings *settings.Settings) error {
 	var err error
 
 	err = channel.channel.ExchangeDeclare(
@@ -85,7 +81,7 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings, future *io
 		nil,          // arguments
 	)
 	if err != nil {
-		future.SetError(fmt.Errorf("Exchange Declare: %s", err))
+		return fmt.Errorf("Exchange Declare: %s", err))
 	}
 
 	err = channel.channel.ExchangeDeclare(
@@ -98,7 +94,7 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings, future *io
 		nil,          // arguments
 	)
 	if err != nil {
-		future.SetError(fmt.Errorf("Exchange Declare: %s", err))
+		return fmt.Errorf("Exchange Declare: %s", err)
 	}
 
 	for _, s := range settings.Services {
@@ -111,7 +107,7 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings, future *io
 			nil,       // arguments
 		)
 		if err != nil {
-			future.SetError(fmt.Errorf("Queue Declare: %s", err))
+			return fmt.Errorf("Queue Declare: %s", err)
 		}
 
 		err = channel.channel.QueueBind(
@@ -122,13 +118,13 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings, future *io
 			nil,        // arguments
 		)
 		if err != nil {
-			future.SetError(fmt.Errorf("Queue Bind: %s", err))
+			return fmt.Errorf("Queue Bind: %s", err)
 		} else {
 			log.Printf("RK %s -> Queue %s", s.RoutingKey, s.Queue)
 		}
 	}
 
-	future.SetResult(true)
+	return nil
 }
 
 func (r *RMQ) assertChannels() {
