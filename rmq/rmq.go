@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"github.com/streadway/amqp"
-	"gitlab.com/vikingmakt/tyr/ioengine"
 	"gitlab.com/vikingmakt/tyr/settings"
 )
 
@@ -13,10 +12,10 @@ type RMQ struct {
 	connection *amqp.Connection
 }
 
-func Connect(url string, settings *settings.Settings) (*RMQ, error) {
+func Connect(settings *settings.Settings) (*RMQ, error) {
 	var r RMQ
 
-	connection, err := amqp.Dial(url)
+	connection, err := amqp.Dial(settings.Amqp)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +30,12 @@ func Connect(url string, settings *settings.Settings) (*RMQ, error) {
 	}()
 
 	r.connection = connection
+	channelAnnounce, err := r.Channel("announce", 0)
+	if err != nil {
+		return nil, err
+	}
 
-	err = r.announce(r.Channel("announce", 0), settings)
+	err = r.announce(channelAnnounce, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +84,7 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings) error {
 		nil,          // arguments
 	)
 	if err != nil {
-		return fmt.Errorf("Exchange Declare: %s", err))
+		return fmt.Errorf("Exchange Declare: %s", err)
 	}
 
 	err = channel.channel.ExchangeDeclare(

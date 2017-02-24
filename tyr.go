@@ -1,8 +1,7 @@
 package tyr
 
 import (
-	"gitlab.com/vikingmakt/tyr/rmq"
-  "time"
+	"time"
 )
 
 type Main interface {
@@ -12,7 +11,7 @@ type Main interface {
 func Run(m Main) {
 	m.Start()
 
-  for {
-    time.Sleep(100 * time.Millisecond)
-  }
+	for {
+		time.Sleep(100 * time.Millisecond)
+	}
 }
