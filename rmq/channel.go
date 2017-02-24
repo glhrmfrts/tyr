@@ -44,3 +44,22 @@ func (c *Channel) BasicConsume(queue string, ctag string, callback ConsumerCallb
 
 	return nil
 }
+
+func (c *Channel) BasicPublish(exchange string, rk string, body string, headers map[string]interface{}) error {
+	err := c.channel.Publish(
+		exchange,
+		rk,
+		false, // mandatory
+		false, // immediate
+		amqp.Publishing{
+			Headers: headers,
+			Body: []byte(body),
+			DeliveryMode: amqp.Transient,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("Basic publish: %s, err")
+	}
+
+	return nil
+}
