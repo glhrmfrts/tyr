@@ -1,6 +1,7 @@
 package udp
 
 import (
+	"fmt"
 	"log"
 	"net"
 
@@ -9,22 +10,22 @@ import (
 )
 
 type Connection struct {
-	conn        *net.UDPConn
+	dialConn    net.Conn
+	listenConn  *net.UDPConn
 	requests    map[string]chan *raid.Message
-	writeToAddr *net.UDPAddr
 }
 
 func NewConnection(writeToAddr string) (*Connection, error) {
-	addr, err := net.ResolveUDPAddr("udp", writeToAddr)
+	dialConn, err := net.Dial("udp", writeToAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &Connection{
 		requests: make(map[string]chan *raid.Message),
-		writeToAddr: addr,
+		dialConn: dialConn,
 	}
-	
+
 	err = c.listen()
 	if err != nil {
 		return nil, err
@@ -34,12 +35,7 @@ func NewConnection(writeToAddr string) (*Connection, error) {
 }
 
 func (c *Connection) Send(msg *raid.Message) (chan *raid.Message, error) {
-	encode, err := utcode.Encode(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.conn.WriteToUDP(encode, c.writeToAddr)
+	err := c.SendNoAck(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -50,13 +46,23 @@ func (c *Connection) Send(msg *raid.Message) (chan *raid.Message, error) {
 	return ch, nil
 }
 
-func (c *Connection) listen() error {
-	localAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+func (c *Connection) SendNoAck(msg *raid.Message) error {
+	encode, err := utcode.Encode(msg)
 	if err != nil {
 		return err
 	}
 
-	c.conn, err = net.ListenUDP("udp", localAddr)
+	fmt.Fprintf(c.dialConn, string(encode))
+	return nil
+}
+
+func (c *Connection) listen() error {
+	localAddr, err := net.ResolveUDPAddr("udp4", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+
+	c.listenConn, err = net.ListenUDP("udp4", localAddr)
 	if err != nil {
 		return err
 	}
@@ -64,7 +70,7 @@ func (c *Connection) listen() error {
 	buf := make([]byte, 1024)
 	go func() {
 		for {
-			size, addr, err := c.conn.ReadFromUDP(buf)
+			size, addr, err := c.listenConn.ReadFromUDP(buf)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -1,7 +1,7 @@
 package rmq
 
 import (
-	"github.com/satori/go.uuid"
+	"gitlab.com/vikingmakt/tyr/raid"
 )
 
 type Consumer struct {
@@ -12,7 +12,7 @@ type ConsumerCallback func(msg *Message)
 
 func (c *Consumer) Tag() string {
 	if c.tag == "" {
-		c.tag = uuid.NewV4().String()
+		c.tag = raid.Etag()
 	}
 	return c.tag
 }
