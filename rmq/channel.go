@@ -2,6 +2,7 @@ package rmq
 
 import (
 	"fmt"
+
 	"github.com/streadway/amqp"
 )
 
@@ -25,12 +26,12 @@ func newChannel(r *RMQ, prefetchCount int) (*Channel, error) {
 func (c *Channel) BasicConsume(queue string, ctag string, callback ConsumerCallback) error {
 	deliveries, err := c.channel.Consume(
 		queue, // name
-		ctag,      // consumerTag,
-		false,      // noAck
-		false,      // exclusive
-		false,      // noLocal
-		false,      // noWait
-		nil,        // arguments
+		ctag,  // consumerTag,
+		false, // noAck
+		false, // exclusive
+		false, // noLocal
+		false, // noWait
+		nil,   // arguments
 	)
 	if err != nil {
 		return fmt.Errorf("Queue Consume: %s", err)
@@ -52,14 +53,18 @@ func (c *Channel) BasicPublish(exchange string, rk string, body string, headers 
 		false, // mandatory
 		false, // immediate
 		amqp.Publishing{
-			Headers: headers,
-			Body: []byte(body),
+			Headers:      headers,
+			Body:         []byte(body),
 			DeliveryMode: amqp.Transient,
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("Basic publish: %s, err")
+		return fmt.Errorf("Basic publish: %s", err)
 	}
 
 	return nil
+}
+
+func (c *Channel) QueueBind(name, key, exchange string, args map[string]interface{}) error {
+	return c.channel.QueueBind(name, key, exchange, false, amqp.Table(args))
 }
