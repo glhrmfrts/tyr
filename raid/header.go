@@ -2,5 +2,5 @@ package raid
 
 type Header struct {
 	Action  string
-	Etag    string
+	Etag    Etag
 }

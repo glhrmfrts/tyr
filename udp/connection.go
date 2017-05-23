@@ -10,20 +10,19 @@ import (
 )
 
 type Connection struct {
-	dialConn    net.Conn
-	listenConn  *net.UDPConn
-	requests    map[string]chan *raid.Message
+	conn    net.Conn
+	requests    map[raid.Etag]chan *raid.Message
 }
 
 func NewConnection(writeToAddr string) (*Connection, error) {
-	dialConn, err := net.Dial("udp", writeToAddr)
+	conn, err := net.Dial("udp", writeToAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &Connection{
-		requests: make(map[string]chan *raid.Message),
-		dialConn: dialConn,
+		requests: make(map[raid.Etag]chan *raid.Message),
+		conn: conn,
 	}
 
 	err = c.listen()
@@ -32,6 +31,10 @@ func NewConnection(writeToAddr string) (*Connection, error) {
 	}
 
 	return c, nil
+}
+
+func (c *Connection) Conn() net.Conn {
+	return c.conn
 }
 
 func (c *Connection) Send(msg *raid.Message) (chan *raid.Message, error) {
@@ -52,32 +55,21 @@ func (c *Connection) SendNoAck(msg *raid.Message) error {
 		return err
 	}
 
-	fmt.Fprintf(c.dialConn, string(encode))
+	fmt.Fprintf(c.conn, string(encode))
 	return nil
 }
 
 func (c *Connection) listen() error {
-	localAddr, err := net.ResolveUDPAddr("udp4", "127.0.0.1:0")
-	if err != nil {
-		return err
-	}
-
-	c.listenConn, err = net.ListenUDP("udp4", localAddr)
-	if err != nil {
-		return err
-	}
-
 	buf := make([]byte, 1024)
 	go func() {
 		for {
-			size, addr, err := c.listenConn.ReadFromUDP(buf)
+			size, err := c.conn.Read(buf)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			content := buf[0:size]
 
-			log.Printf("received %v from %v", string(content), addr)
 			c.onMessage(content)
 		}
 	}()
@@ -89,13 +81,13 @@ func (c *Connection) onMessage(content []byte) {
 	var msg raid.Message
 	err := utcode.Decode(content, &msg)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return
 	}
 
 	if ch, ok := c.requests[msg.Header.Etag]; ok {
 		ch <- &msg
 	} else {
-		log.Fatal("unknown etag ", msg.Header.Etag)
+		log.Println("unknown etag ", msg.Header.Etag)
 	}
 }
