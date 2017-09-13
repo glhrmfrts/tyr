@@ -8,6 +8,10 @@ import (
 
 type Etag string
 
+func (e Etag) String() string {
+	return string(e)
+}
+
 type etagKey int
 
 var etagKeyValue etagKey = 0
