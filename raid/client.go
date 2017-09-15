@@ -6,7 +6,7 @@ import (
 	"net"
 
 	d "github.com/tj/go-debug"
-	utcode "gitlab.com/vikingmakt/go-utcode"
+	utcode "github.com/glhrmfrts/go-utcode"
 )
 
 const (

@@ -1,7 +1,7 @@
 package rmq
 
 import (
-	"gitlab.com/vikingmakt/tyr/raid"
+	"github.com/glhrmfrts/tyr/raid"
 )
 
 type Consumer struct {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"github.com/streadway/amqp"
-	"gitlab.com/vikingmakt/tyr/settings"
+	"github.com/glhrmfrts/tyr/settings"
 )
 
 type RMQ struct {
