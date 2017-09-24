@@ -12,7 +12,28 @@ type RMQ struct {
 	connection *amqp.Connection
 }
 
-func Connect(settings *settings.Settings) (*RMQ, error) {
+func Connect(host string) (*RMQ, error) {
+	conn, err := amqp.Dial(host)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan *amqp.Error)
+	conn.NotifyClose(ch)
+
+	go func() {
+		for err := range ch {
+			log.Println(err)
+		}
+	}()
+
+	return &RMQ{
+		channels: make(map[string]*Channel),
+		connection: conn,
+	}, nil
+}
+
+func ConnectAndAnnounce(settings *settings.Settings) (*RMQ, error) {
 	var r RMQ
 
 	connection, err := amqp.Dial(settings.Amqp)

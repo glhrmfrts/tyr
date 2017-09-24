@@ -12,7 +12,7 @@ type ConsumerCallback func(msg *Message)
 
 func (c *Consumer) Tag() string {
 	if c.tag == "" {
-		c.tag = raid.Etag()
+		c.tag = raid.NewEtag().String()
 	}
 	return c.tag
 }

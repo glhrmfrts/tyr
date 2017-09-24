@@ -46,7 +46,7 @@ func (c *Channel) BasicConsume(queue string, ctag string, callback ConsumerCallb
 	return nil
 }
 
-func (c *Channel) BasicPublish(exchange string, rk string, body string, headers map[string]interface{}) error {
+func (c *Channel) BasicPublish(exchange string, rk string, body []byte, headers map[string]interface{}) error {
 	err := c.channel.Publish(
 		exchange,
 		rk,
@@ -54,7 +54,7 @@ func (c *Channel) BasicPublish(exchange string, rk string, body string, headers 
 		false, // immediate
 		amqp.Publishing{
 			Headers:      headers,
-			Body:         []byte(body),
+			Body:         body,
 			DeliveryMode: amqp.Transient,
 		},
 	)
@@ -67,4 +67,32 @@ func (c *Channel) BasicPublish(exchange string, rk string, body string, headers 
 
 func (c *Channel) QueueBind(name, key, exchange string, args map[string]interface{}) error {
 	return c.channel.QueueBind(name, key, exchange, false, amqp.Table(args))
+}
+
+const (
+	Durable   = uint(0x1)
+	Exclusive = uint(0x2)
+)
+func (c *Channel) ExchangeDeclare(exchange, typ string, flags uint) error {
+	return c.channel.ExchangeDeclare(
+		exchange,
+		typ,
+		(flags & Durable) == Durable,
+		false,
+		false,
+		false,
+		nil,
+	)
+}
+
+func (c *Channel) QueueDeclare(queue string, flags uint) error {
+	_, err := c.channel.QueueDeclare(
+		queue,
+		(flags & Durable) == Durable,
+		false,
+		(flags & Exclusive) == Exclusive,
+		false,
+		nil,
+	)
+	return err
 }
