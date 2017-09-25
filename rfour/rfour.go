@@ -13,6 +13,8 @@ import (
 type IO struct {
 	conn        *rmq.RMQ
 	uuid        string
+	queue       string
+	routingKey  string
 	requests    map[string]chan *rmq.Message
 	channelPool sync.Pool
 	chPublish   *rmq.Channel
@@ -23,21 +25,44 @@ const (
 	exchangeHeaders = "rfour_headers"
 )
 
-func (io *IO) Request(exchange, routingKey string, body []byte, headers map[string]interface{}) chan *rmq.Message {
+func (io *IO) Request(exchange, routingKey string, body []byte, headers map[string]interface{}) (chan *rmq.Message, error) {
 	etag := raid.NewEtag().String()
 	result := io.channelPool.Get().(chan *rmq.Message)
 
 	headers["rfour"] = true
+	headers["request"] = true
 	headers["request-etag"] = etag
-	io.chPublish.BasicPublish(
+	headers["request-datetime"] = time.Now()
+	headers["request-reply-exchange"] = exchangeTopic
+	headers["request-reply-rk"] = io.routingKey
+	err := rmq.BasicPublish(
+		io.chPublish,
 		exchange,
 		routingKey,
 		body,
 		headers,
+		rmq.Mandatory,
 	)
+	if err != nil {
+		return nil, err
+	}
+
 	io.requests[etag] = result
-	log.Printf("send %s at %s", etag, time.Now())
-	return result
+	log.Printf("request %s", etag)
+	return result, nil
+}
+
+func (io *IO) finishRequest(etag string, msg *rmq.Message) bool {
+	responseChannel, ok := io.requests[etag]
+	if !ok {
+		return false
+	}
+
+	responseChannel <- msg
+	delete(io.requests, etag)
+	io.channelPool.Put(responseChannel)
+	log.Printf("reply %s", etag)
+	return true
 }
 
 func handleInputMessage(io *IO, msg *rmq.Message) {
@@ -55,24 +80,25 @@ func handleInputMessage(io *IO, msg *rmq.Message) {
 		log.Println("invalid input message")
 		return
 	}
-	responseChannel, ok := io.requests[responseEtag]
-	if !ok {
+
+	if !io.finishRequest(responseEtag, msg) {
 		log.Println("invalid input message")
 		return
 	}
-	responseChannel <- msg
-	delete(io.requests, responseEtag)
-	io.channelPool.Put(responseChannel)
-	log.Printf("reply %s at %s", responseEtag, time.Now())
+	msg.Ack(true)
 }
 
 func NewIO(conn *rmq.RMQ) *IO {
+	uuid := raid.NewEtag().String()
 	io := &IO{
-		conn: conn,
-		uuid: raid.NewEtag().String(),
-		channels: make(map[string]chan *rmq.Message),
+		conn:        conn,
+		uuid:        uuid,
+		queue:       fmt.Sprintf("rfour_input_%s", uuid),
+		routingKey:  fmt.Sprintf("rfour.input.%s", uuid),
+		requests:    make(map[string]chan *rmq.Message),
 		channelPool: sync.Pool{
 			New: func() interface{} {
+				log.Println("Creating chan")
 				return make(chan *rmq.Message)
 			},
 		},
@@ -83,23 +109,36 @@ func NewIO(conn *rmq.RMQ) *IO {
 	}
 	io.chPublish = chPublish
 
+	returnChan := make(chan rmq.Return)
+	chPublish.NotifyReturn(returnChan)
+	go func() {
+		for ret := range returnChan {
+			log.Println("Not routed")
+			etag := ret.Headers["request-etag"].(string)
+			msg := &rmq.Message{
+				Headers: map[string]interface{}{
+					"__err__": "NOT_ROUTED",
+				},
+			}
+			io.finishRequest(etag, msg)
+		}
+	}()
+
 	chAnnounce, err := conn.Channel("announce", 1)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	queue := fmt.Sprintf("rfour_input_%s", io.uuid)
-	routingKey := fmt.Sprintf("rfour.input.%s", io.uuid)
-	chAnnounce.ExchangeDeclare(exchangeTopic, "topic", rmq.Durable)
-	chAnnounce.ExchangeDeclare(exchangeHeaders, "headers", rmq.Durable)
-	chAnnounce.QueueDeclare(queue, rmq.Exclusive)
-	chAnnounce.QueueBind(queue, routingKey, exchangeTopic, map[string]interface{}{})
+	rmq.ExchangeDeclare(chAnnounce, exchangeTopic, "topic", rmq.Durable)
+	rmq.ExchangeDeclare(chAnnounce, exchangeHeaders, "headers", rmq.Durable)
+	rmq.QueueDeclare(chAnnounce, io.queue, rmq.Exclusive)
+	rmq.QueueBind(chAnnounce, io.queue, io.routingKey, exchangeTopic, map[string]interface{}{})
 
-	chConsume, err := conn.Channel("consume", 10)
+	chConsume, err := conn.Channel("consume", 1)
 	if err != nil {
 		log.Fatal(err)
 	}
-	chConsume.BasicConsume(queue, io.uuid, func(msg *rmq.Message) {
+	rmq.BasicConsume(chConsume, io.queue, io.uuid, func(msg *rmq.Message) {
 		handleInputMessage(io, msg)
 	})
 
