@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"github.com/streadway/amqp"
-	"github.com/glhrmfrts/tyr/settings"
 )
 
 type Channel = amqp.Channel
@@ -43,11 +42,11 @@ func (r *RMQ) Channel(name string, prefetchCount int) (*Channel, error) {
 	return r.channels[name], nil
 }
 
-func (r *RMQ) announce(channel *Channel, settings *settings.Settings) error {
+func (r *RMQ) announce(channel *Channel, sett *Settings) error {
 	var err error
 
 	err = channel.ExchangeDeclare(
-		settings.Exchange.Topic,
+		sett.Exchange.Topic,
 		"topic",
 		true,         // durable
 		false,        // delete when complete
@@ -60,7 +59,7 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings) error {
 	}
 
 	err = channel.ExchangeDeclare(
-		settings.Exchange.Headers,
+		sett.Exchange.Headers,
 		"headers",
 		true,         // durable
 		false,        // delete when complete
@@ -72,7 +71,7 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings) error {
 		return fmt.Errorf("Exchange Declare: %s", err)
 	}
 
-	for _, s := range settings.Services {
+	for _, s := range sett.Services {
 		_, err = channel.QueueDeclare(
 			s.Queue,
 			true,      // durable
@@ -88,7 +87,7 @@ func (r *RMQ) announce(channel *Channel, settings *settings.Settings) error {
 		err = channel.QueueBind(
 			s.Queue,
 			s.RoutingKey,
-			settings.Exchange.Topic,
+			sett.Exchange.Topic,
 			false,      // noWait
 			nil,        // arguments
 		)
@@ -219,10 +218,10 @@ func Connect(host string) (*RMQ, error) {
 	}, nil
 }
 
-func ConnectAndAnnounce(settings *settings.Settings) (*RMQ, error) {
+func ConnectAndAnnounce(sett *Settings) (*RMQ, error) {
 	var r RMQ
 
-	connection, err := amqp.Dial(settings.Amqp)
+	connection, err := amqp.Dial(sett.Amqp)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +241,7 @@ func ConnectAndAnnounce(settings *settings.Settings) (*RMQ, error) {
 		return nil, err
 	}
 
-	err = r.announce(channelAnnounce, settings)
+	err = r.announce(channelAnnounce, sett)
 	if err != nil {
 		return nil, err
 	}

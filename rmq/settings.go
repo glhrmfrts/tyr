@@ -1,4 +1,4 @@
-package settings
+package rmq
 
 type Settings struct {
 	Amqp     string
