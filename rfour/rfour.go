@@ -32,7 +32,7 @@ func (io *IO) Request(exchange, routingKey string, body []byte, headers map[stri
 	headers["rfour"] = true
 	headers["request"] = true
 	headers["request-etag"] = etag
-	headers["request-datetime"] = time.Now()
+	headers["request-datetime"] = time.Now().UTC().Format(time.RFC3339)
 	headers["request-reply-exchange"] = exchangeTopic
 	headers["request-reply-rk"] = io.routingKey
 	err := rmq.BasicPublish(
