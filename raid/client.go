@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	//"bufio"
+	"time"
 
 	d "github.com/tj/go-debug"
 	utcode "github.com/glhrmfrts/go-utcode"
@@ -18,8 +20,9 @@ var (
 )
 
 type Client struct {
-	conn     net.Conn
-	requests map[Etag]chan *Message
+	conn       net.Conn
+	requests   map[Etag]chan *Message
+	notifyRead chan bool
 }
 
 func (c *Client) Conn() net.Conn {
@@ -31,6 +34,7 @@ func (c *Client) Request(msg *Message) (chan *Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.notifyRead <- true
 
 	ch := make(chan *Message, 1)
 	c.requests[msg.Etag()] = ch
@@ -55,13 +59,17 @@ func (c *Client) listen() error {
 	readBuf := make([]byte, ReadBufferSize)
 
 	go func() {
-		for {
+		for notification := range c.notifyRead {
+			log.Println("WILL READ", notification)
+
 			size := ReadBufferSize
 			content := make([]byte, 0, size)
+			c.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 
 			for size == ReadBufferSize {
 				var err error
 				size, err = c.conn.Read(readBuf)
+
 				if err != nil {
 					log.Println(err)
 				}
@@ -100,8 +108,9 @@ func NewClient(mode, addr string) (*Client, error) {
 	}
 
 	c := &Client{
-		requests: make(map[Etag]chan *Message),
-		conn:     conn,
+		requests:   make(map[Etag]chan *Message),
+		conn:       conn,
+		notifyRead: make(chan bool),
 	}
 
 	err = c.listen()

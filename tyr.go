@@ -4,12 +4,8 @@ import (
 	"time"
 )
 
-type Main interface {
-	Start()
-}
-
-func Run(m Main) {
-	m.Start()
+func Run(start func()) {
+	start()
 
 	for {
 		time.Sleep(100 * time.Millisecond)

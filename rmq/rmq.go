@@ -151,6 +151,12 @@ func BasicConsume(c *Channel, queue string, ctag string, callback ConsumerCallba
 }
 
 func BasicPublish(c *Channel, exchange string, rk string, body []byte, headers map[string]interface{}, flags uint) error {
+	for k, v := range headers {
+		switch fv := v.(type) {
+		case int:
+			headers[k] = int32(fv)
+		}
+	}
 	err := c.Publish(
 		exchange,
 		rk,

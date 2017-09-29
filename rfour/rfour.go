@@ -25,6 +25,10 @@ const (
 	exchangeHeaders = "rfour_headers"
 )
 
+func datetime() string {
+	return time.Now().UTC().Format(time.RFC3339)
+}
+
 func (io *IO) Request(exchange, routingKey string, body []byte, headers map[string]interface{}) (chan *rmq.Message, error) {
 	etag := raid.NewEtag().String()
 	result := io.channelPool.Get().(chan *rmq.Message)
@@ -32,7 +36,7 @@ func (io *IO) Request(exchange, routingKey string, body []byte, headers map[stri
 	headers["rfour"] = true
 	headers["request"] = true
 	headers["request-etag"] = etag
-	headers["request-datetime"] = time.Now().UTC().Format(time.RFC3339)
+	headers["request-datetime"] = datetime()
 	headers["request-reply-exchange"] = exchangeTopic
 	headers["request-reply-rk"] = io.routingKey
 	err := rmq.BasicPublish(
@@ -143,4 +147,36 @@ func NewIO(conn *rmq.RMQ) *IO {
 	})
 
 	return io
+}
+
+func mapContains(m map[string]interface{}, key string) bool {
+	_, ok := m[key]
+	return ok
+}
+
+func ValidHeaders(headers map[string]interface{}) bool {
+	return (
+		mapContains(headers, "rfour") &&
+		mapContains(headers, "request") &&
+		mapContains(headers, "request-etag") &&
+		mapContains(headers, "request-reply-exchange") &&
+		mapContains(headers, "request-reply-rk"))
+}
+
+func Reply(body []byte, headers map[string]interface{}, ch *rmq.Channel) error {
+	if ValidHeaders(headers) {
+		headers["response"] = true
+		headers["response-datetime"] = datetime()
+		headers["response-etag"] = headers["request-etag"]
+
+		return rmq.BasicPublish(
+			ch,
+			headers["request-reply-exchange"].(string),
+			headers["request-reply-rk"].(string),
+			body,
+			headers,
+			0,
+		)
+	}
+	return fmt.Errorf("invalid headers")
 }
